@@ -29,7 +29,9 @@ torch.cuda.is_available() ## True
 
 [Kaggle - PlantVillage Dataset](https://www.kaggle.com/datasets/emmarex/plantdisease/data)
 
+    mkdir datasets
+    cd datasets
     kaggle datasets download -d emmarex/plantdisease
+    unzip plantdisease
     
-    cd data
     python reformat.py
