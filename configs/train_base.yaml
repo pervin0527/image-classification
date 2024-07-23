@@ -1,9 +1,13 @@
 data_path: "/home/pervinco/image-classification/datasets"
 save_path: "/home/pervinco/image-classification/runs"
 
+model_name: "resnet34"
+
 num_workers: 32
 epochs: 1000
 img_size: 256
 batch_size: 32
 learning_rate: 0.00001
 weight_decay: 0.000001
+
+save_batch_imgs: False

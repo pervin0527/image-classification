@@ -31,4 +31,4 @@ def save_batch_images(data, output_dir="output_images"):
 
         image_filename = os.path.join(output_dir, f"image_{idx}_label_{label.item()}.png")
         save_image(img, image_filename)
-        print(f"Saved {image_filename}")
+        # print(f"Saved {image_filename}")

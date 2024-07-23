@@ -1,12 +1,16 @@
 import cv2
+import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 
 class ClassificationDataset(Dataset):
-    def __init__(self, csv_path, img_path, transform=None):
+    def __init__(self, csv_path, meta_path, img_path, transform=None):
         self.img_path = img_path
         self.df = pd.read_csv(csv_path).sample(frac=1).values
         self.transform = transform
+
+        meta_df = pd.read_csv(meta_path)
+        self.classes = meta_df['class_name'].tolist()
 
     def __len__(self):
         return len(self.df)
@@ -14,7 +18,13 @@ class ClassificationDataset(Dataset):
     def __getitem__(self, idx):
         file_name, target = self.df[idx]
         image = cv2.imread(f"{self.img_path}/{file_name}")
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if image is not None:
+            image = np.asarray(image)
+        else:
+            raise ValueError(f"Error loading image {self.img_path}/{file_name}")
+
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # 필요시 사용
 
         if self.transform:
             image = self.transform(image=image)['image']
