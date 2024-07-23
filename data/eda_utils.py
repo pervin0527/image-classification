@@ -21,3 +21,5 @@ def visualize_class_distribution(train_df, meta_df, save_plot=False, plot_path="
         print(f"Plot saved as {plot_path}")
     else:
         plt.show()
+
+    return class_counts
