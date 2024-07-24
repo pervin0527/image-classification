@@ -39,9 +39,9 @@ def valid(model, dataloader, loss_func, device, writer, epoch):
     valid_acc = accuracy_score(targets_list, preds_list)
     valid_f1 = f1_score(targets_list, preds_list, average='macro')
 
-    writer.add_scalars('Loss', {'valid': valid_loss}, epoch)
-    writer.add_scalars('Accuracy', {'valid': valid_acc}, epoch)
-    writer.add_scalars('F1_Score', {'valid': valid_f1}, epoch)
+    writer.add_scalars('valid', {'Loss': valid_loss}, epoch)
+    writer.add_scalars('valid', {'Accuracy': valid_acc}, epoch)
+    writer.add_scalars('valid', {'F1_Score': valid_f1}, epoch)
 
     result = {
         "valid_loss": valid_loss,
@@ -77,9 +77,9 @@ def train(model, dataloader, optimizer, loss_func, device, writer, epoch):
     train_acc = accuracy_score(targets_list, preds_list)
     train_f1 = f1_score(targets_list, preds_list, average='macro')
 
-    writer.add_scalars('Loss', {'train': train_loss}, epoch)
-    writer.add_scalars('Accuracy', {'train': train_acc}, epoch)
-    writer.add_scalars('F1_Score', {'train': train_f1}, epoch)
+    writer.add_scalars('train', {'Loss': train_loss}, epoch)
+    writer.add_scalars('train', {'Accuracy': train_acc}, epoch)
+    writer.add_scalars('train', {'F1_Score': train_f1}, epoch)
 
     result = {
         "train_loss": train_loss,

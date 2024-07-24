@@ -5,7 +5,7 @@ seed: 1994
 num_workers: 32
 save_batch_imgs: False
 
-model_name: "resnet50"
+model_name: "efficientnet_b0"
 epochs: 1000
 img_size: 256
 batch_size: 32
