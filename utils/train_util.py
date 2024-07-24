@@ -1,6 +1,23 @@
 import os
+import torch
+import random
+import numpy as np
 from datetime import datetime
+from torch.backends import cudnn
 from torchvision.utils import save_image
+
+def set_seed(seed_num):
+    random.seed(seed_num)
+    np.random.seed(seed_num)
+
+    torch.manual_seed(seed_num) ## pytorch seed 설정(gpu 제외)
+    
+    torch.cuda.manual_seed(seed_num) ## pytorch cuda seed 설정
+    torch.cuda.manual_seed_all(seed_num)
+
+    cudnn.benchmark = False ## cudnn 커널 선정하는 과정을 허용하지 않는다.
+    cudnn.deterministic = True ## 결정론적(동일한 입력에 대한 동일한 출력)으로 동작하도록 설정.
+
 
 def make_save_dir(save_path):
     timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
