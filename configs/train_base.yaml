@@ -1,4 +1,4 @@
-data_path: /home/pervinco/image-classification/datasets
+data_path: /home/pervinco/Datasets/plant-pathology
 save_path: /home/pervinco/image-classification/runs
 
 seed: 1994

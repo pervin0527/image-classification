@@ -39,7 +39,7 @@ def visualize_class_images(train_df, meta_df, data_path, save_plot=False, plot_p
 
         plt.figure(figsize=(10, 10))
         for idx, file_name in enumerate(class_files):
-            img_path = os.path.join(data_path, class_name, file_name)
+            img_path = os.path.join(data_path, file_name)
             img = Image.open(img_path)
             plt.subplot(3, 3, idx + 1)
             plt.imshow(img)
