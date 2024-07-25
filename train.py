@@ -15,8 +15,9 @@ from utils.common_util import parse_args
 from utils.config_util import load_config, save_config
 from utils.train_util import set_seed, make_save_dir, save_batch_images
 
-from data.dataset import ClassificationDataset
+from data.dataset import ClassificationDataset, compute_mean_std, train_valid_split
 from data.augmentation import train_transform, eval_transform
+
 
 def valid(model, dataloader, loss_func, device, writer, epoch):
     model.eval()
@@ -95,15 +96,23 @@ def main(cfg):
     writer = SummaryWriter(log_dir=f"{save_dir}/logs")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    if not os.path.exists(f"{cfg['data_path']}/train-data.csv") and not os.path.exists(f"{cfg['data_path']}/valid-data.csv"):
+        train_valid_split(f"{cfg['data_path']}", cfg['valid_ratio'], cfg['seed'])
+
+    mean, std = compute_mean_std(csv_path=f"{cfg['data_path']}/train-data.csv",
+                                 image_path=f"{cfg['data_path']}/train",
+                                 img_size=cfg['img_size'],
+                                 save_path=f"{cfg['data_path']}/mean_std.pkl")
+    
     train_dataset = ClassificationDataset(csv_path=f"{cfg['data_path']}/train-data.csv", 
                                           meta_path=f"{cfg['data_path']}/meta.csv",
                                           img_path=f"{cfg['data_path']}/train", 
-                                          transform=train_transform(cfg['img_size']))
+                                          transform=train_transform(cfg['img_size'], mean, std))
     
     valid_dataset = ClassificationDataset(csv_path=f"{cfg['data_path']}/valid-data.csv", 
                                           meta_path=f"{cfg['data_path']}/meta.csv",
                                           img_path=f"{cfg['data_path']}/train", 
-                                          transform=eval_transform(cfg['img_size']))    
+                                          transform=eval_transform(cfg['img_size'], mean, std))    
     
     train_dataloader = DataLoader(train_dataset, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'], shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'])
