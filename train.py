@@ -118,6 +118,7 @@ def main(cfg):
     loss_func = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
 
+    save_config(cfg, save_dir)
     best_valid_loss = float('inf')
     early_stopping_counter = 0
     early_stopping_patience = cfg.get('early_stop_patience', 10)
