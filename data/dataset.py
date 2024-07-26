@@ -109,9 +109,9 @@ class ClassificationDataset(Dataset):
         else:
             raise ValueError(f"Error loading image {self.img_path}/{file_name}")
 
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # 필요시 사용
 
         if self.transform:
             image = self.transform(image=image)['image']
-
+        
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         return image, target
