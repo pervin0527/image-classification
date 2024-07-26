@@ -32,9 +32,10 @@ def valid(model, dataloader, loss_func, device, writer, epoch):
 
             preds = model(images)
             loss = loss_func(preds, labels)
-            valid_loss += loss.item()
+            valid_loss += loss.item() * images.size(0)
+
             preds_list.extend(preds.argmax(dim=1).detach().cpu().numpy())
-            targets_list.extend(labels.detach().cpu().numpy())
+            targets_list.extend(labels.argmax(dim=1).detach().cpu().numpy())
 
     valid_loss /= len(dataloader)
     valid_acc = accuracy_score(targets_list, preds_list)
@@ -51,7 +52,7 @@ def valid(model, dataloader, loss_func, device, writer, epoch):
     }
 
     return result
-        
+
 
 def train(model, dataloader, optimizer, loss_func, device, writer, epoch):
     model.train()
@@ -63,16 +64,17 @@ def train(model, dataloader, optimizer, loss_func, device, writer, epoch):
         images = images.to(device)
         labels = labels.to(device)
 
-        model.zero_grad(set_to_none=True)
+        optimizer.zero_grad()
         preds = model(images)
         loss = loss_func(preds, labels)
         
         loss.backward()
         optimizer.step()
 
-        train_loss += loss.item()
+        train_loss += loss.item() * images.size(0)
+
         preds_list.extend(preds.argmax(dim=1).detach().cpu().numpy())
-        targets_list.extend(labels.detach().cpu().numpy())
+        targets_list.extend(labels.argmax(dim=1).detach().cpu().numpy())
 
     train_loss /= len(dataloader)
     train_acc = accuracy_score(targets_list, preds_list)
@@ -104,16 +106,10 @@ def main(cfg):
                                  img_size=cfg['img_size'],
                                  save_path=f"{cfg['data_path']}/mean_std.pkl")
     
-    train_dataset = ClassificationDataset(csv_path=f"{cfg['data_path']}/train-data.csv", 
-                                          meta_path=f"{cfg['data_path']}/meta.csv",
-                                          img_path=f"{cfg['data_path']}/train", 
-                                          transform=train_transform(cfg['img_size'], mean, std))
-    
-    valid_dataset = ClassificationDataset(csv_path=f"{cfg['data_path']}/valid-data.csv", 
-                                          meta_path=f"{cfg['data_path']}/meta.csv",
-                                          img_path=f"{cfg['data_path']}/train", 
-                                          transform=eval_transform(cfg['img_size'], mean, std))    
-    
+    train_dataset = ClassificationDataset(cfg, is_train=True, transform=train_transform(cfg['img_size'], mean, std))
+    valid_dataset = ClassificationDataset(cfg, is_train=False, transform=eval_transform(cfg['img_size'], mean, std))
+    print(len(train_dataset), len(valid_dataset))    
+
     train_dataloader = DataLoader(train_dataset, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'], shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'])
     classes = train_dataset.classes
@@ -124,7 +120,8 @@ def main(cfg):
             break
 
     model = timm.create_model(cfg['model_name'], pretrained=True, num_classes=len(classes)).to(device)
-    loss_func = nn.CrossEntropyLoss()
+    # loss_func = nn.CrossEntropyLoss()
+    loss_func = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
 
     save_config(cfg, save_dir)

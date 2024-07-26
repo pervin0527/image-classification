@@ -82,21 +82,25 @@ def mixup(image1, image2, label1, label2, alpha=1.0):
     return mixup_image, mixup_label
 
 
-def cutout(image, mask_size, p=0.5):
-    if np.random.rand() > p:
-        return image
-    
-    h, w = image.shape[:2]
-    mask_size_half = mask_size // 2
+def cutout(image, mask_size, mask_color=(0, 0, 0)):
+    h, w, _ = image.shape
 
-    cx = np.random.randint(0, w)
-    cy = np.random.randint(0, h)
+    # 마스크의 좌표를 임의로 선택
+    top = np.random.randint(0 - mask_size // 2, h - mask_size)
+    left = np.random.randint(0 - mask_size // 2, w - mask_size)
+    bottom = top + mask_size
+    right = left + mask_size
 
-    x1 = np.clip(cx - mask_size_half, 0, w)
-    y1 = np.clip(cy - mask_size_half, 0, h)
-    x2 = np.clip(cx + mask_size_half, 0, w)
-    y2 = np.clip(cy + mask_size_half, 0, h)
+    # 이미지의 복사본 생성
+    cutout_image = image.copy()
 
-    image[y1:y2, x1:x2, :] = 0
-    
-    return image
+    # 이미지 범위를 벗어나지 않도록 조정
+    top = max(0, top)
+    left = max(0, left)
+    bottom = min(h, bottom)
+    right = min(w, right)
+
+    # 선택된 영역을 마스크 색상으로 채움
+    cutout_image[top:bottom, left:right] = mask_color
+
+    return cutout_image

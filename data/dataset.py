@@ -1,14 +1,19 @@
 import os
 import cv2
+import torch
 import pickle
+import random
 import numpy as np
 import pandas as pd
 
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
+from torch.nn import functional as F
+from sklearn.model_selection import train_test_split
 
+from data.augmentation import cutmix, cutout, mixup
 from utils.plot_util import visualize_class_distribution
+
 
 def train_valid_split(data_path, test_size, random_state):
     df = pd.read_csv(f"{data_path}/train.csv")
@@ -89,13 +94,20 @@ def compute_mean_std(csv_path, image_path, img_size=256, save_path='mean_std.pkl
     return mean.tolist(), std.tolist()
 
 class ClassificationDataset(Dataset):
-    def __init__(self, csv_path, meta_path, img_path, transform=None):
-        self.img_path = img_path
-        self.df = pd.read_csv(csv_path).sample(frac=1).values
+    def __init__(self, cfg, is_train, transform=None):
+        self.img_path = f"{cfg['data_path']}/train"
+        self.img_size = cfg['img_size']
+        self.is_train = is_train
         self.transform = transform
 
-        meta_df = pd.read_csv(meta_path)
+        if is_train:
+            self.df = pd.read_csv(f"{cfg['data_path']}/train-data.csv").sample(frac=1).values
+        else:
+            self.df = pd.read_csv(f"{cfg['data_path']}/valid-data.csv").sample(frac=1).values
+
+        meta_df = pd.read_csv(f"{cfg['data_path']}/meta.csv")
         self.classes = meta_df['class_name'].tolist()
+        self.num_classes = len(self.classes)
 
     def __len__(self):
         return len(self.df)
@@ -103,15 +115,32 @@ class ClassificationDataset(Dataset):
     def __getitem__(self, idx):
         file_name, target = self.df[idx]
         image = cv2.imread(f"{self.img_path}/{file_name}")
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(image, (self.img_size, self.img_size))
 
-        if image is not None:
-            image = np.asarray(image)
-        else:
-            raise ValueError(f"Error loading image {self.img_path}/{file_name}")
+        # 정수형 라벨을 원핫 인코딩으로 변환
+        target_onehot = F.one_hot(torch.tensor(target), num_classes=self.num_classes).float()
 
+        if self.is_train:
+            if random.random() > 0.5:
+                rand_idx = random.randint(0, len(self.df)-1)
+                bg_file_name, bg_target = self.df[rand_idx]
+                bg_img = cv2.imread(f"{self.img_path}/{bg_file_name}")
+                bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
+                bg_img = cv2.resize(bg_img, (self.img_size, self.img_size))
+
+                # bg_target 정수형 라벨을 원핫 인코딩으로 변환
+                bg_label_onehot = F.one_hot(torch.tensor(bg_target), num_classes=self.num_classes).float()
+
+                rand_prob = random.random()
+                if rand_prob <= 0.4:
+                    image, target_onehot = cutmix(image, bg_img, target_onehot, bg_label_onehot)
+                elif 0.4 < rand_prob <= 0.8:
+                    image, target_onehot = mixup(image, bg_img, target_onehot, bg_label_onehot)
+                else:
+                    image = cutout(image, mask_size=self.img_size//2)
 
         if self.transform:
             image = self.transform(image=image)['image']
-        
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return image, target
+
+        return image, target_onehot
