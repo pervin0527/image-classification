@@ -121,17 +121,19 @@ def main(cfg):
             save_batch_images(data, output_dir="./datasets/batch_images")
             break
 
-    model = timm.create_model(cfg['model_name'], pretrained=True, num_classes=len(classes)).to(device)
+    model = timm.create_model(cfg['model_name'], pretrained=True, num_classes=len(classes), strict=False).to(device)
     # loss_func = nn.CrossEntropyLoss()
     loss_func = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=cfg['reduce_factor'], patience=cfg['reduce_patience'])
 
     save_config(cfg, save_dir)
     best_valid_loss = float('inf')
     early_stopping_counter = 0
     early_stopping_patience = cfg.get('early_stop_patience', 10)
     for epoch in range(1, cfg['epochs'] + 1):
-        print(f"Epoch [{epoch} | {cfg['epochs']}]")
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f"Epoch [{epoch} | {cfg['epochs']}], LR : {current_lr}")
         
         train_result = train(model, train_dataloader, optimizer, loss_func, device, writer, epoch)
         print(f"Train Loss : {train_result['train_loss']:.4f}, Train Acc : {train_result['train_acc']:.4f}, Train F1 : {train_result['train_f1']:.4f}")
@@ -139,12 +141,15 @@ def main(cfg):
         valid_result = valid(model, valid_dataloader, loss_func, device, writer, epoch)
         print(f"Valid Loss : {valid_result['valid_loss']:.4f}, Valid Acc : {valid_result['valid_acc']:.4f}, Valid F1 : {valid_result['valid_f1']:.4f}")
 
+        scheduler.step(valid_result['valid_loss'])
         if valid_result['valid_loss'] < best_valid_loss:
+            print(f"Valid Loss Updated | prev : {best_valid_loss:.4f} --> cur : {valid_result['valid_loss']}")
             best_valid_loss = valid_result['valid_loss']
             torch.save(model.state_dict(), os.path.join(save_dir, 'weights', 'best.pth'))
             early_stopping_counter = 0
         else:
             early_stopping_counter += 1
+            print(f"Valid Loss Not Updated | early_stop_counter : {early_stopping_counter}")
 
         if early_stopping_counter >= early_stopping_patience:
             print("Early stopping")

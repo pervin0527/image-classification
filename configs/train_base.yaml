@@ -8,8 +8,12 @@ save_batch_imgs: True
 
 model_name: efficientnetv2_rw_m.agc_in1k ## resnet, efficientnet_b0, efficientnetv2_rw_m.agc_in1k
 epochs: 1000
-img_size: 512
+img_size: 256
 batch_size: 32
-learning_rate: 0.00001
+
+learning_rate: 0.001
+reduce_factor: 0.1
+reduce_patience: 10
 weight_decay: 0.000001
-early_stop_patience: 10
+
+early_stop_patience: 20

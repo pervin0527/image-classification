@@ -101,46 +101,54 @@ class ClassificationDataset(Dataset):
         self.transform = transform
 
         if is_train:
-            self.df = pd.read_csv(f"{cfg['data_path']}/train-data.csv").sample(frac=1).values
+            self.df = pd.read_csv(f"{cfg['data_path']}/train-data.csv").sample(frac=1).reset_index(drop=True)
         else:
-            self.df = pd.read_csv(f"{cfg['data_path']}/valid-data.csv").sample(frac=1).values
+            self.df = pd.read_csv(f"{cfg['data_path']}/valid-data.csv").sample(frac=1).reset_index(drop=True)
 
         meta_df = pd.read_csv(f"{cfg['data_path']}/meta.csv")
-        self.classes = meta_df['class_name'].tolist()
-        self.num_classes = len(self.classes)
+        # self.classes = meta_df['class_name'].tolist()
+        # self.num_classes = len(self.classes)
+
+        classes = list(meta_df['class_name'].unique())
+        unique_classes = set()
+        for cls in classes:
+            split_classes = cls.split()
+            for single_class in split_classes:
+                unique_classes.add(single_class)
+
+        self.classes = list(unique_classes)
+        print(self.classes)
 
     def __len__(self):
         return len(self.df)
     
     def __getitem__(self, idx):
-        file_name, target = self.df[idx]
+        file_name = self.df.iloc[idx, 0]
+        target = self.df.iloc[idx, 1]
+        target = torch.tensor([int(x) for x in target.strip('[]').split()]).float()
         image = cv2.imread(f"{self.img_path}/{file_name}")
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (self.img_size, self.img_size))
 
-        # 정수형 라벨을 원핫 인코딩으로 변환
-        target_onehot = F.one_hot(torch.tensor(target), num_classes=self.num_classes).float()
-
         if self.is_train:
             if random.random() > 0.5:
                 rand_idx = random.randint(0, len(self.df)-1)
-                bg_file_name, bg_target = self.df[rand_idx]
+                bg_file_name = self.df.iloc[rand_idx, 0]
+                bg_target = self.df.iloc[rand_idx, 1]
+                bg_target = torch.tensor([int(x) for x in bg_target.strip('[]').split()]).float()
                 bg_img = cv2.imread(f"{self.img_path}/{bg_file_name}")
                 bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
                 bg_img = cv2.resize(bg_img, (self.img_size, self.img_size))
 
-                # bg_target 정수형 라벨을 원핫 인코딩으로 변환
-                bg_label_onehot = F.one_hot(torch.tensor(bg_target), num_classes=self.num_classes).float()
-
                 rand_prob = random.random()
                 if rand_prob <= 0.4:
-                    image, target_onehot = cutmix(image, bg_img, target_onehot, bg_label_onehot)
+                    image, target = cutmix(image, bg_img, target, bg_target)
                 elif 0.4 < rand_prob <= 0.8:
-                    image, target_onehot = mixup(image, bg_img, target_onehot, bg_label_onehot)
+                    image, target = mixup(image, bg_img, target, bg_target)
                 else:
                     image = cutout(image, mask_size=self.img_size//2)
 
         if self.transform:
             image = self.transform(image=image)['image']
 
-        return image, target_onehot
+        return image, target
