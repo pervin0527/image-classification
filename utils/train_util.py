@@ -35,17 +35,15 @@ def denormalize(tensor, mean, std):
 
 
 def save_batch_images(data, output_dir="output_images"):
+    os.makedirs(output_dir, exist_ok=True)
+
     images, labels = data
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     for idx, (image, label) in enumerate(zip(images, labels)):
         img = denormalize(image, mean, std)        
         img = img.clamp(0, 1)
 
-        image_filename = os.path.join(output_dir, f"image_{idx}_label_{label.item()}.png")
+        image_filename = os.path.join(output_dir, f"image_{idx}.png")
         save_image(img, image_filename)
         # print(f"Saved {image_filename}")

@@ -116,6 +116,8 @@ def main(cfg):
 
     if cfg['save_batch_imgs']:
         for batch_idx, data in enumerate(train_dataloader):
+            images, labels = data
+            print(images.shape, labels.shape)
             save_batch_images(data, output_dir="./datasets/batch_images")
             break
 
