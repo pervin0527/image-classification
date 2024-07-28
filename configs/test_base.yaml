@@ -1,0 +1,10 @@
+data_path: /home/pervinco/image-classification/datasets
+weight_path: /home/pervinco/image-classification/runs/2024-07-28-01-45-09/weights/best.pth
+output_path: /home/pervinco/image-classification/runs/2024-07-28-01-45-09/pred.csv
+
+seed: 1994
+num_workers: 32
+
+model_name: efficientnet_b3 ## resnet, efficientnet_b0, efficientnetv2_rw_m.agc_in1k
+img_size: 300
+batch_size: 1

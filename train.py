@@ -101,13 +101,10 @@ def main(cfg):
     if not os.path.exists(f"{cfg['data_path']}/train-data.csv") and not os.path.exists(f"{cfg['data_path']}/valid-data.csv"):
         train_valid_split(f"{cfg['data_path']}", cfg['valid_ratio'], cfg['seed'])
 
-    mean, std = compute_mean_std(csv_path=f"{cfg['data_path']}/train-data.csv",
-                                 image_path=f"{cfg['data_path']}/train",
-                                 img_size=cfg['img_size'],
-                                 save_path=f"{cfg['data_path']}/mean_std.pkl")
+    mean, std = compute_mean_std(cfg, save_path=f"{cfg['data_path']}/mean_std.pkl")
     
-    train_dataset = ClassificationDataset(cfg, is_train=True, transform=train_transform(cfg['img_size'], mean, std))
-    valid_dataset = ClassificationDataset(cfg, is_train=False, transform=eval_transform(cfg['img_size'], mean, std))
+    train_dataset = ClassificationDataset(cfg, ds_type='train', transform=train_transform(cfg['img_size'], mean, std))
+    valid_dataset = ClassificationDataset(cfg, ds_type='valid', transform=eval_transform(cfg['img_size'], mean, std))
     print(len(train_dataset), len(valid_dataset))    
 
     train_dataloader = DataLoader(train_dataset, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'], shuffle=True)
@@ -121,7 +118,7 @@ def main(cfg):
             save_batch_images(data, output_dir="./datasets/batch_images")
             break
 
-    model = timm.create_model(cfg['model_name'], pretrained=True, num_classes=len(classes), strict=False).to(device)
+    model = timm.create_model(cfg['model_name'], pretrained=True, num_classes=len(classes)).to(device)
     # loss_func = nn.CrossEntropyLoss()
     loss_func = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
@@ -143,7 +140,7 @@ def main(cfg):
 
         scheduler.step(valid_result['valid_loss'])
         if valid_result['valid_loss'] < best_valid_loss:
-            print(f"Valid Loss Updated | prev : {best_valid_loss:.4f} --> cur : {valid_result['valid_loss']}")
+            print(f"Valid Loss Updated | prev : {best_valid_loss:.4f} --> cur : {valid_result['valid_loss']:.4f}")
             best_valid_loss = valid_result['valid_loss']
             torch.save(model.state_dict(), os.path.join(save_dir, 'weights', 'best.pth'))
             early_stopping_counter = 0

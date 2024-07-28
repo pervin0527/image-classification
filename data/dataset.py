@@ -33,7 +33,7 @@ def train_valid_split(data_path, test_size, random_state):
     valid_data.to_csv(f'{data_path}/valid-data.csv', index=False)
 
 
-def compute_mean_std(csv_path, image_path, img_size=256, save_path='mean_std.pkl', sample_size=None):
+def compute_mean_std(cfg, save_path='mean_std.pkl', sample_size=None):
     """
     CSV 파일에서 이미지 목록을 읽고, 데이터셋의 평균(mean)과 표준 편차(std)를 계산하거나 불러오는 함수.
     
@@ -53,7 +53,7 @@ def compute_mean_std(csv_path, image_path, img_size=256, save_path='mean_std.pkl
         print("Loaded mean and std from file.")
     else:
         # 파일이 존재하지 않으면 값을 계산하고 저장
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(f"{cfg['data_path']}/train-data.csv")
         if 'ID' not in df.columns:
             raise ValueError("CSV 파일에 'ID' 컬럼이 없습니다.")
         
@@ -69,13 +69,13 @@ def compute_mean_std(csv_path, image_path, img_size=256, save_path='mean_std.pkl
         num_pixels = 0
 
         for image_file in tqdm(image_files, desc="Calculating mean and std"):
-            img_path = os.path.join(image_path, image_file)
+            img_path = os.path.join(f"{cfg['data_path']}/train", image_file)
             img = cv2.imread(img_path)
             if img is None:
                 continue  # 이미지를 읽지 못한 경우 건너뜀
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            if img_size:
-                img = cv2.resize(img, (img_size, img_size))
+            if cfg['img_size']:
+                img = cv2.resize(img, (cfg['img_size'], cfg['img_size']))
             img = img / 255.0
             img = img.reshape(-1, num_channels)
             
@@ -94,16 +94,20 @@ def compute_mean_std(csv_path, image_path, img_size=256, save_path='mean_std.pkl
     return mean.tolist(), std.tolist()
 
 class ClassificationDataset(Dataset):
-    def __init__(self, cfg, is_train, transform=None):
-        self.img_path = f"{cfg['data_path']}/train"
-        self.img_size = cfg['img_size']
-        self.is_train = is_train
+    def __init__(self, cfg, ds_type, transform=None):
+        self.ds_type = ds_type
         self.transform = transform
 
-        if is_train:
+        self.img_size = cfg['img_size']
+        self.img_path = f"{cfg['data_path']}/train"
+
+        if ds_type == "train":
             self.df = pd.read_csv(f"{cfg['data_path']}/train-data.csv").sample(frac=1).reset_index(drop=True)
-        else:
+        elif ds_type == 'valid':
             self.df = pd.read_csv(f"{cfg['data_path']}/valid-data.csv").sample(frac=1).reset_index(drop=True)
+        else:
+            self.img_path = f"{cfg['data_path']}/test"
+            self.df = pd.read_csv(f"{cfg['data_path']}/sample_submission.csv").sample(frac=1).reset_index(drop=True)
 
         meta_df = pd.read_csv(f"{cfg['data_path']}/meta.csv")
         # self.classes = meta_df['class_name'].tolist()
@@ -124,13 +128,17 @@ class ClassificationDataset(Dataset):
     
     def __getitem__(self, idx):
         file_name = self.df.iloc[idx, 0]
-        target = self.df.iloc[idx, 1]
-        target = torch.tensor([int(x) for x in target.strip('[]').split()]).float()
-        image = cv2.imread(f"{self.img_path}/{file_name}")
+
+        if self.ds_type != 'test':
+            target = self.df.iloc[idx, 1]
+            target = torch.tensor([int(x) for x in target.strip('[]').split()]).float()
+        
+        img_path = f"{self.img_path}/{file_name}"
+        image = cv2.imread(img_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (self.img_size, self.img_size))
 
-        if self.is_train:
+        if self.ds_type == "train":
             if random.random() > 0.5:
                 rand_idx = random.randint(0, len(self.df)-1)
                 bg_file_name = self.df.iloc[rand_idx, 0]
@@ -151,4 +159,7 @@ class ClassificationDataset(Dataset):
         if self.transform:
             image = self.transform(image=image)['image']
 
+        if self.ds_type == "test":
+            return image
+        
         return image, target
